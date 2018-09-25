@@ -153,7 +153,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 07211d38f290de649accadd27686a88d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  items:
+  textures:
   - {fileID: 1435537158291942, guid: 307cf7935225a4541a49e98a202b58a6, type: 2}
   - {fileID: 1196955215163650, guid: b72a1e164665c6e498af73239e328273, type: 2}
   - {fileID: 1622344708001224, guid: 96e2317af1d6111448d338f4fdc10c3f, type: 2}
