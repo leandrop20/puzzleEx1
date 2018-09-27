@@ -75,12 +75,18 @@ MonoBehaviour:
   targetX: 0
   targetY: 0
   isMatched: 0
+  otherDot: {fileID: 0}
   swipeAngle: 0
   swipeResist: 1
+  isColorBomb: 0
   isColumnBomb: 0
   isRowBomb: 0
+  isAdjacentBomb: 0
   rowArrow: {fileID: 1729802035985918, guid: 22743b3ce59e8bf4a83cafe200aee119, type: 2}
   columnArrow: {fileID: 1836471546000550, guid: af45de12421fdfa4dbe9fc5c10394672,
+    type: 2}
+  colorBomb: {fileID: 1917474192353884, guid: f4436bc0803f06f459d87f773b833262, type: 2}
+  adjacentBomb: {fileID: 1764014134082092, guid: a2714b3220ff34a4ab6217025a6450ab,
     type: 2}
 --- !u!212 &212783288497758360
 SpriteRenderer:
@@ -117,8 +123,8 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: b9c98ac54acc4114ebb38826041c3679, type: 3}
-  m_Color: {r: 0.8196079, g: 0.19215688, b: 0.37647063, a: 1}
+  m_Sprite: {fileID: 21300000, guid: df5bc744c9422804c9ae986afce37a44, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0

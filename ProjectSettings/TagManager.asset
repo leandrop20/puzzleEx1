@@ -4,13 +4,11 @@
 TagManager:
   serializedVersion: 2
   tags:
-  - Dark Green Dot
+  - Black Dot
+  - Blue Dot
   - Green Dot
-  - Indigo Dot
-  - Orange Dot
+  - Pink Dot
   - Red Dot
-  - Salmon Dot
-  - Teal Dot
   - Yellow Dot
   layers:
   - Default
