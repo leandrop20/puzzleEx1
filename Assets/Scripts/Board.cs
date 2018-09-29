@@ -27,51 +27,60 @@ public class Board : MonoBehaviour {
     public int height;
     public int offSet;
     public GameObject tilePrefab;
-    public GameObject breakableTilePrefab;
+    public GameObject breakablePrefab;
     public GameObject[] dots;
     public GameObject destroyEffect;
     public TileType[] boardLayout;
     private bool[,] blankSpaces;
-    private BackgroundTile[,] breakableTiles;
+    private Breakable[,] breakableTiles;
     public GameObject[,] allDots;
     public Dot currentDot;
     private FindMatches findMatches;
+
+    public int basePieceValue = 20;
+    private int streakValue = 1;
+    private ScoreManager scoreManager;
+    public float refillDelay = 0.5f;
+    public int[] scoreGoals;
 
     private void Start() {
         findMatches = FindObjectOfType<FindMatches>();
         allDots = new GameObject[width, height];
         blankSpaces = new bool[width, height];
-        breakableTiles = new BackgroundTile[width, height];
+        breakableTiles = new Breakable[width, height];
+        scoreManager = FindObjectOfType<ScoreManager>();
+
         SetUp();
     }
 
     public void GenerateBlankSpaces() {
-        for (int i = 0; i < boardLayout.Length - 1; i++) {
+        for (int i = 0; i < boardLayout.Length; i++) {
             if (boardLayout[i].tileKind == TileKind.Blank) {
                 blankSpaces[boardLayout[i].x, boardLayout[i].y] = true;
             }
         }
     }
 
-    public void GenerateBreakableTiles() {
+    public void GenerateBreakables() {
         for (int i = 0; i < boardLayout.Length; i++) {
             if (boardLayout[i].tileKind == TileKind.Breakable) {
                 Vector2 tempPosition = new Vector2(boardLayout[i].x, boardLayout[i].y);
-                GameObject tile = Instantiate(breakableTilePrefab, tempPosition, Quaternion.identity, 
+                GameObject tile = Instantiate(breakablePrefab, tempPosition, Quaternion.identity, 
                     transform);
-                breakableTiles[boardLayout[i].x, boardLayout[i].y] = tile.GetComponent<BackgroundTile>();
+                breakableTiles[boardLayout[i].x, boardLayout[i].y] = tile.GetComponent<Breakable>();
             }
         }
     }
 
     private void SetUp() {
         GenerateBlankSpaces();
-        GenerateBreakableTiles();
+        GenerateBreakables();
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
                 if (!blankSpaces[i, j]) {
                     Vector2 tempPosition = new Vector2(i, j + offSet);
-                    GameObject backgroundTile = Instantiate(tilePrefab, tempPosition, Quaternion.identity,
+                    Vector2 tilePosition = new Vector2(i, j);
+                    GameObject backgroundTile = Instantiate(tilePrefab, tilePosition, Quaternion.identity,
                         transform);
                     backgroundTile.name = "( " + i + ", " + j + ")";
 
@@ -213,6 +222,7 @@ public class Board : MonoBehaviour {
 
             Destroy(particle, .5f);
             Destroy(allDots[column, row]);
+            scoreManager.IncreaseScore(basePieceValue * streakValue);
             allDots[column, row] = null;
         }
     }
@@ -226,10 +236,10 @@ public class Board : MonoBehaviour {
             }
         }
         findMatches.currentMatches.Clear();
-        StartCoroutine(DecreaseRowCo2());
+        StartCoroutine(DecreaseRowCo());
     }
 
-    private IEnumerator DecreaseRowCo2() {
+    private IEnumerator DecreaseRowCo() {
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
                 if (!blankSpaces[i, j] && allDots[i ,j] == null) {
@@ -243,26 +253,9 @@ public class Board : MonoBehaviour {
                 }
             }
         }
-        yield return new WaitForSeconds(.4f);
+        yield return new WaitForSeconds(refillDelay * 0.5f);
         StartCoroutine(FillBoardCo());
     }
-
-    /*private IEnumerator DecreaseRowCo() {
-        int nullCount = 0;
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                if (allDots[i, j] == null) {
-                    nullCount++;
-                } else if (nullCount > 0) {
-                    allDots[i, j].GetComponent<Dot>().row -= nullCount;
-                    allDots[i, j] = null;
-                }
-            }
-            nullCount = 0;
-        }
-        yield return new WaitForSeconds(.4f);
-        StartCoroutine(FillBoardCo());
-    }*/
 
     private void RefillBoard() {
         for (int i = 0; i < width; i++) {
@@ -270,6 +263,14 @@ public class Board : MonoBehaviour {
                 if (allDots[i, j] == null && !blankSpaces[i, j]) {
                     Vector2 tempPosition = new Vector2(i, j + offSet);
                     int dotToUse = Random.Range(0, dots.Length);
+
+                    int maxIterations = 0;
+                    while (MatchesAt(i, j, dots[dotToUse]) && maxIterations < 100) {
+                        maxIterations++;
+                        dotToUse = Random.Range(0, dots.Length);
+                    }
+                    maxIterations = 0;
+
                     GameObject piece = Instantiate(dots[dotToUse], tempPosition, Quaternion.identity,
                         transform);
                     allDots[i, j] = piece;
@@ -295,19 +296,23 @@ public class Board : MonoBehaviour {
 
     private IEnumerator FillBoardCo() {
         RefillBoard();
-        yield return new WaitForSeconds(.5f);
+        yield return new WaitForSeconds(refillDelay);
 
         while (MatchesOnBoard()) {
-            yield return new WaitForSeconds(.5f);
+            streakValue++;
             DestroyMatches();
+            yield return new WaitForSeconds(2 * refillDelay);
         }
+
         findMatches.currentMatches.Clear();
         currentDot = null;
         yield return new WaitForSeconds(.5f);
         if (IsDeadLocked()) {
-            ShuffleBoard();
+            StartCoroutine(ShuffleBoard());
         }
+        yield return new WaitForSeconds(refillDelay);
         currentState = GameState.move;
+        streakValue = 1;
     }
 
     private void SwitchPieces(int column, int row, Vector2 direction) {
@@ -373,7 +378,9 @@ public class Board : MonoBehaviour {
         return true;
     }
 
-    private void ShuffleBoard() {
+    private IEnumerator ShuffleBoard() {
+        yield return new WaitForSeconds(0.5f);
+
         List<GameObject> newBoard = new List<GameObject>();
 
         for (int i = 0; i < width; i++) {
@@ -383,6 +390,8 @@ public class Board : MonoBehaviour {
                 }
             }
         }
+
+        yield return new WaitForSeconds(0.5f);
 
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
@@ -406,7 +415,7 @@ public class Board : MonoBehaviour {
         }
 
         if (IsDeadLocked()) {
-            ShuffleBoard();
+            StartCoroutine(ShuffleBoard());
         }
     }
 

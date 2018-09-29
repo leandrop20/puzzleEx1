@@ -10,6 +10,7 @@ TagManager:
   - Pink Dot
   - Red Dot
   - Yellow Dot
+  - Color
   layers:
   - Default
   - TransparentFX

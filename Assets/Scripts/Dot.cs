@@ -43,15 +43,9 @@ public class Dot : MonoBehaviour {
         hintManager = FindObjectOfType<HintManager>();
         board = FindObjectOfType<Board>();
         findMatches = FindObjectOfType<FindMatches>();
-        //targetX = (int) transform.position.x;
-        //targetY = (int) transform.position.y;
-        //row = targetY;
-        //column = targetX;
-        //previousRow = row;
-        //previowsColumn = column;
     }
 
-    //This is for testing and Debug only;
+    //This is for testing and Debug only; //////////////////////////////////////////////
     private void OnMouseOver() {
         if (Input.GetMouseButtonDown(1)) {
             isColorBomb = true;
@@ -61,10 +55,6 @@ public class Dot : MonoBehaviour {
     }
 
     private void Update() {
-        /*if (isMatched) {
-            SpriteRenderer mySprite = GetComponent<SpriteRenderer>();
-            mySprite.color = new Color(1f, 1f, 1f, .2f);
-        }*/
         targetX = column;
         targetY = row;
         if (Mathf.Abs(targetX - transform.position.x) > .1) {//MOVE TOWARDS THE TARGET
@@ -114,7 +104,6 @@ public class Dot : MonoBehaviour {
             } else {
                 board.DestroyMatches();
             }
-            //otherDot = null;
         }
     }
 
@@ -166,36 +155,12 @@ public class Dot : MonoBehaviour {
 
     private void MovePieces() {
         if (swipeAngle > -45 && swipeAngle <= 45 && column < board.width - 1) {//RIGHT SWIPE
-            /*otherDot = board.allDots[column + 1, row];
-            previousRow = row;
-            previowsColumn = column;
-            otherDot.GetComponent<Dot>().column -= 1;
-            column += 1;
-            StartCoroutine(CheckMoveCo());*/
             MovePieceActual(Vector2.right);
         } else if (swipeAngle > 45 && swipeAngle <= 135 && row < board.height - 1) {//UP SWIPE
-            /*otherDot = board.allDots[column, row + 1];
-            previousRow = row;
-            previowsColumn = column;
-            otherDot.GetComponent<Dot>().row -= 1;
-            row += 1;
-            StartCoroutine(CheckMoveCo());*/
             MovePieceActual(Vector2.up);
         } else if ((swipeAngle > 135 || swipeAngle <= -135) && column > 0) {//LEFT SWIPE
-            /*otherDot = board.allDots[column - 1, row];
-            previousRow = row;
-            previowsColumn = column;
-            otherDot.GetComponent<Dot>().column += 1;
-            column -= 1;
-            StartCoroutine(CheckMoveCo());*/
             MovePieceActual(Vector2.left);
         } else if (swipeAngle < -45 && swipeAngle >= -135 && row > 0) {//RIGHT SWIPE
-            /*otherDot = board.allDots[column, row - 1];
-            previousRow = row;
-            previowsColumn = column;
-            otherDot.GetComponent<Dot>().row += 1;
-            row -= 1;
-            StartCoroutine(CheckMoveCo());*/
             MovePieceActual(Vector2.down);
         }
         board.currentState = GameState.move;
@@ -240,6 +205,7 @@ public class Dot : MonoBehaviour {
     public void MakeColorBomb() {
         isColorBomb = true;
         Instantiate(colorBomb, transform.position, Quaternion.identity, transform);
+        this.gameObject.tag = "Color";
     }
 
     public void MakeAdjacentBomb() {
