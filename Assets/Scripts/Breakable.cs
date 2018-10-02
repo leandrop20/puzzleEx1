@@ -6,13 +6,19 @@ public class Breakable : MonoBehaviour {
 
     public int hitPoints;
     private SpriteRenderer sprite;
+    private GoalManager goalManager;
 
     private void Start() {
+        goalManager = FindObjectOfType<GoalManager>();
         sprite = GetComponent<SpriteRenderer>();
     }
 
     private void Update() {
         if (hitPoints <= 0) {
+            if (goalManager != null) {
+                goalManager.CompareGoal(this.gameObject.tag);
+                goalManager.UpdateGoals();
+            }
             Destroy(this.gameObject);
         }
     }
