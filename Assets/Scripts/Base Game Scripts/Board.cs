@@ -9,7 +9,16 @@ public enum GameState {
 public enum TileKind {
     Breakable,
     Blank,
+    Lock,
+    Concrete,
+    Slime,
     Normal
+}
+
+[System.Serializable]
+public class MatchType {
+    public int type;
+    public string color;
 }
 
 [System.Serializable]
@@ -35,6 +44,9 @@ public class Board : MonoBehaviour {
     [Header("Prefabs")]
     public GameObject tilePrefab;
     public GameObject breakablePrefab;
+    public GameObject lockPrefab;
+    public GameObject concretePrefab;
+    public GameObject slimePrefab;
     public GameObject[] dots;
     public GameObject destroyEffect;
 
@@ -42,10 +54,15 @@ public class Board : MonoBehaviour {
     public TileType[] boardLayout;
     private bool[,] blankSpaces;
     private Breakable[,] breakableTiles;
+    public Breakable[,] lockTiles;
+    public Breakable[,] concreteTiles;
+    private Breakable[,] slimeTiles;
     public GameObject[,] allDots;
     public Dot currentDot;
     private FindMatches findMatches;
 
+    [Header("Match Stuff")]
+    public MatchType matchType;
     public int basePieceValue = 20;
     private int streakValue = 1;
     private ScoreManager scoreManager;
@@ -53,10 +70,11 @@ public class Board : MonoBehaviour {
     private GoalManager goalManager;
     public float refillDelay = 0.5f;
     public int[] scoreGoals;
+    public bool makeSlime = true;
 
     private void Awake() {
-        if (PlayerPrefs.HasKey("CurrentLevel")) {
-            level = PlayerPrefs.GetInt("CurrentLevel");
+        if (PlayerPrefs.HasKey("Current Level")) {
+            level = PlayerPrefs.GetInt("Current Level");
         }
         if (world != null) {
             if (level < world.levels.Length) {
@@ -78,6 +96,9 @@ public class Board : MonoBehaviour {
         allDots = new GameObject[width, height];
         blankSpaces = new bool[width, height];
         breakableTiles = new Breakable[width, height];
+        lockTiles = new Breakable[width, height];
+        slimeTiles = new Breakable[width, height];
+        concreteTiles = new Breakable[width, height];
         scoreManager = FindObjectOfType<ScoreManager>();
 
         SetUp();
@@ -104,12 +125,50 @@ public class Board : MonoBehaviour {
         }
     }
 
+    private void GenerateLockTiles() {
+        for (int i = 0; i < boardLayout.Length; i++)
+        {
+            if (boardLayout[i].tileKind == TileKind.Lock)
+            {
+                Vector2 tempPosition = new Vector2(boardLayout[i].x, boardLayout[i].y);
+                GameObject tile = Instantiate(lockPrefab, tempPosition, Quaternion.identity,
+                    transform);
+                lockTiles[boardLayout[i].x, boardLayout[i].y] = tile.GetComponent<Breakable>();
+            }
+        }
+    }
+
+    private void GenerateConcreteTiles() {
+        for (int i = 0; i < boardLayout.Length; i++) {
+            if (boardLayout[i].tileKind == TileKind.Concrete) {
+                Vector2 tempPosition = new Vector2(boardLayout[i].x, boardLayout[i].y);
+                GameObject tile = Instantiate(concretePrefab, tempPosition, Quaternion.identity,
+                    transform);
+                concreteTiles[boardLayout[i].x, boardLayout[i].y] = tile.GetComponent<Breakable>();
+            }
+        }
+    }
+
+    private void GenerateSlimeTiles() {
+        for (int i = 0; i < boardLayout.Length; i++) {
+            if (boardLayout[i].tileKind == TileKind.Slime) {
+                Vector2 tempPosition = new Vector2(boardLayout[i].x, boardLayout[i].y);
+                GameObject tile = Instantiate(slimePrefab, tempPosition, Quaternion.identity,
+                    transform);
+                slimeTiles[boardLayout[i].x, boardLayout[i].y] = tile.GetComponent<Breakable>();
+            }
+        }
+    }
+
     private void SetUp() {
         GenerateBlankSpaces();
         GenerateBreakables();
+        GenerateLockTiles();
+        GenerateConcreteTiles();
+        GenerateSlimeTiles();
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
-                if (!blankSpaces[i, j]) {
+                if (!blankSpaces[i, j] && !concreteTiles[i, j] && !slimeTiles[i, j]) {
                     Vector2 tempPosition = new Vector2(i, j + offSet);
                     Vector2 tilePosition = new Vector2(i, j);
                     GameObject backgroundTile = Instantiate(tilePrefab, tilePosition, Quaternion.identity,
@@ -171,83 +230,132 @@ public class Board : MonoBehaviour {
         return false;
     }
 
-    private bool ColumnOrRow() {
-        int numberHorizontal = 0;
-        int numberVertical = 0;
-        Dot firstPiece = findMatches.currentMatches[0].GetComponent<Dot>();
-        if (firstPiece != null) {
-            foreach (GameObject currentPiece in findMatches.currentMatches) {
-                Dot dot = currentPiece.GetComponent<Dot>();
-                if (dot.row == firstPiece.row) {
-                    numberHorizontal++;
+    private MatchType ColumnOrRow() {
+        List<GameObject> matchCopy = findMatches.currentMatches as List<GameObject>;
+
+        matchType.type = 0;
+        matchType.color = "";
+
+        for (int i = 0; i < matchCopy.Count; i++) {
+            Dot thisDot = matchCopy[i].GetComponent<Dot>();
+
+            string color = matchCopy[i].tag;
+            int column = thisDot.column;
+            int row = thisDot.row;
+            int columnMatch = 0;
+            int rowMatch = 0;
+
+            for (int j = 0; j < matchCopy.Count; j++) {
+                Dot nextDot = matchCopy[j].GetComponent<Dot>();
+                if (nextDot == thisDot) {
+                    continue;
                 }
-                if (dot.column == firstPiece.column) {
-                    numberVertical++;
+
+                if (nextDot.column == thisDot.column && nextDot.tag == color) {
+                    columnMatch++;
+                }
+
+                if (nextDot.row == thisDot.row && nextDot.tag == color) {
+                    rowMatch++;
                 }
             }
+
+            if (columnMatch == 4 || rowMatch == 4) {
+                matchType.type = 1;
+                matchType.color = color;
+                return matchType;
+            } else if (columnMatch == 2 && rowMatch == 2) {
+                matchType.type = 2;
+                matchType.color = color;
+                return matchType;
+            } else if (columnMatch == 3 || rowMatch == 3) {
+                matchType.type = 3;
+                matchType.color = color;
+                return matchType;
+            }
         }
-        return (numberVertical == 5 || numberHorizontal == 5);
+
+        matchType.type = 0;
+        matchType.color = "";
+        return matchType;
     }
 
     private void CheckToMakeBombs() {
-        if (findMatches.currentMatches.Count == 4 || findMatches.currentMatches.Count == 7) {
-            findMatches.CheckBombs();
-        }
-        if (findMatches.currentMatches.Count == 5 || findMatches.currentMatches.Count == 8) {
-            if (ColumnOrRow()) {
-                if (currentDot != null) {
-                    if (currentDot.isMatched) {
-                        if (!currentDot.isColorBomb) {
-                            currentDot.isMatched = false;
-                            currentDot.MakeColorBomb();
-                        }
-                    } else {
-                        if (currentDot.otherDot != null) {
-                            Dot otherDot = currentDot.otherDot.GetComponent<Dot>();
-                            if (otherDot.isMatched) {
-                                if (otherDot.isColorBomb) {
-                                    otherDot.isMatched = false;
-                                    otherDot.MakeColorBomb();
-                                }
-                            }
+        if (findMatches.currentMatches.Count > 3) {
+            MatchType typeOfMatch = ColumnOrRow();
+
+            if (typeOfMatch.type == 1) {
+                if (currentDot != null && currentDot.isMatched && currentDot.tag == typeOfMatch.color) {
+                    currentDot.isMatched = false;
+                    currentDot.MakeColorBomb();
+                } else {
+                    if (currentDot.otherDot != null) {
+                        Dot otherDot = currentDot.otherDot.GetComponent<Dot>();
+                        if (otherDot.isMatched && otherDot.tag == typeOfMatch.color) {
+                            otherDot.isMatched = false;
+                            otherDot.MakeColorBomb();
                         }
                     }
                 }
-            } else {
-                if (currentDot != null) {
-                    if (currentDot.isMatched) {
-                        if (!currentDot.isAdjacentBomb) {
-                            currentDot.isMatched = false;
-                            currentDot.MakeAdjacentBomb();
-                        }
-                    } else {
-                        if (currentDot.otherDot != null) {
-                            Dot otherDot = currentDot.otherDot.GetComponent<Dot>();
-                            if (otherDot.isMatched) {
-                                if (!currentDot.isAdjacentBomb) {
-                                    otherDot.isMatched = false;
-                                    otherDot.MakeAdjacentBomb();
-                                }
-                            }
+            } else if (typeOfMatch.type == 2) {
+                if (currentDot != null && currentDot.isMatched && currentDot.tag == typeOfMatch.color) {
+                    currentDot.isMatched = false;
+                    currentDot.MakeAdjacentBomb();
+                } else {
+                    if (currentDot.otherDot != null) {
+                        Dot otherDot = currentDot.otherDot.GetComponent<Dot>();
+                        if (otherDot.isMatched && otherDot.tag == typeOfMatch.color) {
+                            otherDot.isMatched = false;
+                            otherDot.MakeAdjacentBomb();
                         }
                     }
+                }
+            } else if (typeOfMatch.type == 3) {
+                findMatches.CheckBombs(typeOfMatch);
+            }
+        }
+    }
+
+    public void BombRow(int row) {
+        for (int i = 0; i < width; i++) {
+            if (concreteTiles[i, row]) {
+                concreteTiles[i, row].TakeDamage(1);
+                if (concreteTiles[i, row].hitPoints <= 0) {
+                    concreteTiles[i, row] = null;
+                }
+            }
+        }
+    }
+
+    public void BombColumn(int column) {
+        for (int i = 0; i < width; i++) {
+            if (concreteTiles[column, i]) {
+                concreteTiles[column, i].TakeDamage(1);
+                if (concreteTiles[column, i].hitPoints <= 0) {
+                    concreteTiles[column, i] = null;
                 }
             }
         }
     }
 
     private void DestroyMatchesAt(int column, int row) {
-        if (allDots[column, row].GetComponent<Dot>().isMatched) {
-            if (findMatches.currentMatches.Count >= 4) {
-                CheckToMakeBombs();
-            }
-            
+        if (allDots[column, row].GetComponent<Dot>().isMatched) {            
             if (breakableTiles[column, row] != null) {
                 breakableTiles[column, row].TakeDamage(1);
                 if (breakableTiles[column, row].hitPoints <= 0) {
                     breakableTiles[column, row] = null;
                 }
             }
+
+            if (lockTiles[column, row] != null) {
+                lockTiles[column, row].TakeDamage(1);
+                if (lockTiles[column, row].hitPoints <= 0) {
+                    lockTiles[column, row] = null;
+                }
+            }
+
+            DamageConcrete(column, row);
+            DamageSlime(column, row);
 
             if (goalManager != null) {
                 goalManager.CompareGoal(allDots[column, row].tag.ToString());
@@ -261,13 +369,100 @@ public class Board : MonoBehaviour {
                 Quaternion.identity);
 
             Destroy(particle, .5f);
-            Destroy(allDots[column, row]);
+            //allDots[column, row].GetComponent<Dot>().PopAnimation();
+            Destroy(allDots[column, row], .5f);
             scoreManager.IncreaseScore(basePieceValue * streakValue);
             allDots[column, row] = null;
         }
     }
 
+    private void DamageConcrete(int column, int row) {
+        if (column > 0) {
+            if (concreteTiles[column - 1, row]) {
+                concreteTiles[column - 1, row].TakeDamage(1);
+                if (concreteTiles[column - 1, row].hitPoints <= 0) {
+                    concreteTiles[column - 1, row] = null;
+                }
+            }
+        }
+
+        if (column < width - 1) {
+            if (concreteTiles[column + 1, row]) {
+                concreteTiles[column + 1, row].TakeDamage(1);
+                if (concreteTiles[column + 1, row].hitPoints <= 0) {
+                    concreteTiles[column + 1, row] = null;
+                }
+            }
+        }
+
+        if (row > 0) {
+            if (concreteTiles[column, row - 1]) {
+                concreteTiles[column, row - 1].TakeDamage(1);
+                if (concreteTiles[column, row - 1].hitPoints <= 0) {
+                    concreteTiles[column, row - 1] = null;
+                }
+            }
+        }
+
+        if (row < height - 1) {
+            if (concreteTiles[column, row + 1]) {
+                concreteTiles[column, row + 1].TakeDamage(1);
+                if (concreteTiles[column, row + 1].hitPoints <= 0) {
+                    concreteTiles[column, row + 1] = null;
+                }
+            }
+        }
+    }
+
+    private void DamageSlime(int column, int row) {
+        if (column > 0) {
+            if (slimeTiles[column - 1, row]) {
+                slimeTiles[column - 1, row].TakeDamage(1);
+                if (slimeTiles[column - 1, row].hitPoints <= 0) {
+                    slimeTiles[column - 1, row] = null;
+                }
+                makeSlime = false;
+            }
+        }
+
+        if (column < width - 1) {
+            if (slimeTiles[column + 1, row]) {
+                slimeTiles[column + 1, row].TakeDamage(1);
+                if (slimeTiles[column + 1, row].hitPoints <= 0) {
+                    slimeTiles[column + 1, row] = null;
+                }
+                makeSlime = false;
+            }
+        }
+
+        if (row > 0) {
+            if (slimeTiles[column, row - 1]) {
+                slimeTiles[column, row - 1].TakeDamage(1);
+                if (slimeTiles[column, row - 1].hitPoints <= 0) {
+                    slimeTiles[column, row - 1] = null;
+                }
+                makeSlime = false;
+            }
+        }
+
+        if (row < height - 1) {
+            if (slimeTiles[column, row + 1]) {
+                slimeTiles[column, row + 1].TakeDamage(1);
+                if (slimeTiles[column, row + 1].hitPoints <= 0) {
+                    slimeTiles[column, row + 1] = null;
+                }
+                makeSlime = false;
+            }
+        }
+    }
+
     public void DestroyMatches() {
+        if (findMatches.currentMatches.Count >= 4) {
+            CheckToMakeBombs();
+        }
+
+        findMatches.currentMatches.Clear();
+
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
                 if (allDots[i, j] != null) {
@@ -275,14 +470,14 @@ public class Board : MonoBehaviour {
                 }
             }
         }
-        findMatches.currentMatches.Clear();
         StartCoroutine(DecreaseRowCo());
     }
 
     private IEnumerator DecreaseRowCo() {
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
-                if (!blankSpaces[i, j] && allDots[i ,j] == null) {
+                if (!blankSpaces[i, j] && allDots[i ,j] == null && !concreteTiles[i, j] &&
+                        !slimeTiles[i, j]) {
                     for (int k = j + 1; k < height; k++) {
                         if (allDots[i, k] != null) {
                             allDots[i, k].GetComponent<Dot>().row = j;
@@ -300,7 +495,8 @@ public class Board : MonoBehaviour {
     private void RefillBoard() {
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
-                if (allDots[i, j] == null && !blankSpaces[i, j]) {
+                if (allDots[i, j] == null && !blankSpaces[i, j] && !concreteTiles[i, j] &&
+                        !slimeTiles[i, j]) {
                     Vector2 tempPosition = new Vector2(i, j + offSet);
                     int dotToUse = Random.Range(0, dots.Length);
 
@@ -322,6 +518,7 @@ public class Board : MonoBehaviour {
     }
 
     private bool MatchesOnBoard() {
+        findMatches.FindAllMatches();
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
                 if (allDots[i, j] != null) {
@@ -335,30 +532,87 @@ public class Board : MonoBehaviour {
     }
 
     private IEnumerator FillBoardCo() {
+        yield return new WaitForSeconds(refillDelay);
         RefillBoard();
         yield return new WaitForSeconds(refillDelay);
 
         while (MatchesOnBoard()) {
             streakValue++;
             DestroyMatches();
-            yield return new WaitForSeconds(2 * refillDelay);
+            yield break;
+        }
+        currentDot = null;
+
+        CheckToMakeSlime();
+
+        if (IsDeadLocked()) {
+            StartCoroutine(ShuffleBoardCo());
         }
 
-        findMatches.currentMatches.Clear();
-        currentDot = null;
-        yield return new WaitForSeconds(.5f);
-        if (IsDeadLocked()) {
-            StartCoroutine(ShuffleBoard());
-        }
         yield return new WaitForSeconds(refillDelay);
-        currentState = GameState.move;
+        System.GC.Collect();
+        if (currentState != GameState.pause) {
+            currentState = GameState.move;
+        }
+        makeSlime = true;
         streakValue = 1;
     }
 
+    private void CheckToMakeSlime() {
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                if (slimeTiles[i, j] != null && makeSlime) {
+                    MakeNewSlime();
+                }
+            }
+        }
+    }
+
+    private Vector2 CheckForAdjacent(int column, int row) {
+        if (allDots[column + 1, row] && column < width - 1) {
+            return Vector2.right;
+        }
+        if (allDots[column - 1, row] && column > 0) {
+            return Vector2.left;
+        }
+        if (allDots[column, row + 1] && row < height - 1) {
+            return Vector2.up;
+        }
+        if (allDots[column, row - 1] && row > 0) {
+            return Vector2.down;
+        }
+        return Vector2.zero;
+    }
+
+    private void MakeNewSlime() {
+        bool slime = false;
+        int loops = 0;
+        while (!slime && loops < 200) {
+            int newX = Random.Range(0, width - 1);
+            int newY = Random.Range(0, height - 1);
+            if (slimeTiles[newX, newY] != null) {
+                Vector2 adjacent = CheckForAdjacent(newX, newY);
+                if (adjacent != Vector2.zero) {
+                    int _x = newX + (int)adjacent.x;
+                    int _y = newY + (int)adjacent.y;
+
+                    Destroy(allDots[_x, _y]);
+                    Vector2 tempPosition = new Vector2(_x, _y);
+                    GameObject tile = Instantiate(slimePrefab, tempPosition, Quaternion.identity, transform);
+                    slimeTiles[_x, _y] = tile.GetComponent<Breakable>();
+                    slime = true;
+                }
+            }
+            loops++;
+        }
+    }
+
     private void SwitchPieces(int column, int row, Vector2 direction) {
-        GameObject holder = allDots[column + (int)direction.x, row + (int)direction.y];
-        allDots[column + (int)direction.x, row + (int)direction.y] = allDots[column, row];
-        allDots[column, row] = holder;
+        if (allDots[column + (int)direction.x, row + (int)direction.y] != null) {
+            GameObject holder = allDots[column + (int)direction.x, row + (int)direction.y];
+            allDots[column + (int)direction.x, row + (int)direction.y] = allDots[column, row];
+            allDots[column, row] = holder;
+        }
     }
 
     private bool CheckForMatches() {
@@ -418,7 +672,7 @@ public class Board : MonoBehaviour {
         return true;
     }
 
-    private IEnumerator ShuffleBoard() {
+    private IEnumerator ShuffleBoardCo() {
         yield return new WaitForSeconds(0.5f);
 
         List<GameObject> newBoard = new List<GameObject>();
@@ -435,7 +689,7 @@ public class Board : MonoBehaviour {
 
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
-                if (!blankSpaces[i, j]) {
+                if (!blankSpaces[i, j] && !concreteTiles[i, j] && !slimeTiles[i, j]) {
                     int pieceToUse = Random.Range(0, newBoard.Count);
 
                     int maxIterations = 0;
@@ -455,7 +709,7 @@ public class Board : MonoBehaviour {
         }
 
         if (IsDeadLocked()) {
-            StartCoroutine(ShuffleBoard());
+            StartCoroutine(ShuffleBoardCo());
         }
     }
 

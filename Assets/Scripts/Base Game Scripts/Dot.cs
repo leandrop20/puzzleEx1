@@ -13,13 +13,16 @@ public class Dot : MonoBehaviour {
     public int targetY;
     public bool isMatched = false;
 
+    private Animator anime;
+    private float shineDelay;
+    private float shineDelaySeconds;
     private EndGameManager endGameManager;
     private HintManager hintManager;
     private FindMatches findMatches;
     private Board board;
     public GameObject otherDot;
-    private Vector2 firstTouchPosition;
-    private Vector2 finalTouchPosition;
+    private Vector2 firstTouchPosition = Vector2.zero;
+    private Vector2 finalTouchPosition = Vector2.zero;
     private Vector2 tempPosition;
 
     [Header("Swiper Stuff")]
@@ -39,12 +42,18 @@ public class Dot : MonoBehaviour {
     private void Start() {
         isColumnBomb = false;
         isRowBomb = false;
+        isColorBomb = false;
         isAdjacentBomb = false;
 
+        shineDelay = Random.Range(3f, 6f);
+        shineDelaySeconds = shineDelay;
+
         hintManager = FindObjectOfType<HintManager>();
-        board = FindObjectOfType<Board>();
+        board = GameObject.FindWithTag("Board").GetComponent<Board>();
+        //board = FindObjectOfType<Board>();
         findMatches = FindObjectOfType<FindMatches>();
         endGameManager = FindObjectOfType<EndGameManager>();
+        anime = GetComponent<Animator>();
     }
 
     //This is for testing and Debug only; //////////////////////////////////////////////
@@ -57,6 +66,12 @@ public class Dot : MonoBehaviour {
     }
 
     private void Update() {
+        shineDelaySeconds -= Time.deltaTime;
+        if (shineDelaySeconds <= 0) {
+            shineDelaySeconds = shineDelay;
+            StartCoroutine(StartShineCo());
+        }
+
         targetX = column;
         targetY = row;
         if (Mathf.Abs(targetX - transform.position.x) > .1) {//MOVE TOWARDS THE TARGET
@@ -64,8 +79,8 @@ public class Dot : MonoBehaviour {
             transform.position = Vector2.Lerp(transform.position, tempPosition, .6f);
             if (board.allDots[column, row] != this.gameObject) {
                 board.allDots[column, row] = this.gameObject;
+                findMatches.FindAllMatches();
             }
-            findMatches.FindAllMatches();
         } else {//DIRECTLY SET THE POSITION
             tempPosition = new Vector2(targetX, transform.position.y);
             transform.position = tempPosition;
@@ -76,12 +91,22 @@ public class Dot : MonoBehaviour {
             transform.position = Vector2.Lerp(transform.position, tempPosition, .6f);
             if (board.allDots[column, row] != this.gameObject) {
                 board.allDots[column, row] = this.gameObject;
+                findMatches.FindAllMatches();
             }
-            findMatches.FindAllMatches();
         } else {//DIRECTLY SET THE POSITION
             tempPosition = new Vector2(transform.position.x, targetY);
             transform.position = tempPosition;
         }
+    }
+
+    IEnumerator StartShineCo() {
+        anime.SetBool("Shine", true);
+        yield return null;
+        anime.SetBool("Shine", false);
+    }
+
+    public void PopAnimation() {
+        anime.SetBool("Popped", true);
     }
 
     public IEnumerator CheckMoveCo() {
@@ -118,6 +143,7 @@ public class Dot : MonoBehaviour {
         if (hintManager != null) {
             hintManager.DestroyHint();
         }
+
         if (board.currentState == GameState.move) {
             firstTouchPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         }
@@ -149,12 +175,17 @@ public class Dot : MonoBehaviour {
         otherDot = board.allDots[column + (int)direction.x, row + (int)direction.y];
         previousRow = row;
         previowsColumn = column;
-        if (otherDot != null) {
-            otherDot.GetComponent<Dot>().column += -1 * (int)direction.x;
-            otherDot.GetComponent<Dot>().row += -1 * (int)direction.y;
-            column += (int)direction.x;
-            row += (int)direction.y;
-            StartCoroutine(CheckMoveCo());
+        if (board.lockTiles[column, row] == null && 
+                board.lockTiles[column + (int)direction.x, row + (int)direction.y] == null) {
+            if (otherDot != null) {
+                otherDot.GetComponent<Dot>().column += -1 * (int)direction.x;
+                otherDot.GetComponent<Dot>().row += -1 * (int)direction.y;
+                column += (int)direction.x;
+                row += (int)direction.y;
+                StartCoroutine(CheckMoveCo());
+            } else {
+                board.currentState = GameState.move;
+            }
         } else {
             board.currentState = GameState.move;
         }
@@ -200,24 +231,32 @@ public class Dot : MonoBehaviour {
     }
 
     public void MakeRowBomb() {
-        isRowBomb = true;
-        Instantiate(rowArrow, transform.position, Quaternion.identity, transform);
+        if (!isColumnBomb && !isColorBomb && !isAdjacentBomb) {
+            isRowBomb = true;
+            Instantiate(rowArrow, transform.position, Quaternion.identity, transform);
+        }
     }
 
     public void MakeColumnBomb() {
-        isColumnBomb = true;
-        Instantiate(columnArrow, transform.position, Quaternion.identity, transform);
+        if (!isRowBomb && !isColorBomb && !isAdjacentBomb) {
+            isColumnBomb = true;
+            Instantiate(columnArrow, transform.position, Quaternion.identity, transform);
+        }
     }
 
     public void MakeColorBomb() {
-        isColorBomb = true;
-        Instantiate(colorBomb, transform.position, Quaternion.identity, transform);
-        this.gameObject.tag = "Color";
+        if (!isColumnBomb && !isRowBomb && !isAdjacentBomb) {
+            isColorBomb = true;
+            Instantiate(colorBomb, transform.position, Quaternion.identity, transform);
+            this.gameObject.tag = "Color";
+        }
     }
 
     public void MakeAdjacentBomb() {
-        isAdjacentBomb = true;
-        Instantiate(adjacentBomb, transform.position, Quaternion.identity, transform);
+        if (!isColumnBomb && !isRowBomb && !isColorBomb) {
+            isAdjacentBomb = true;
+            Instantiate(adjacentBomb, transform.position, Quaternion.identity, transform);
+        }
     }
 
 }
