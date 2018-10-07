@@ -363,7 +363,7 @@ public class Board : MonoBehaviour {
             }
 
             if (soundManager != null) {
-                soundManager.PLayRandomDestroyNoise();
+                soundManager.PlayRandomDestroyNoise();
             }
             GameObject particle = Instantiate(destroyEffect, allDots[column, row].transform.position, 
                 Quaternion.identity);
