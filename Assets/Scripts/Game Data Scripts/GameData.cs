@@ -20,6 +20,7 @@ public class GameData : MonoBehaviour {
     public SaveData saveData;
 
     private void Awake() {
+        //Reset();////////////////////////////////////////////////////////////////////
         if (gameData == null) {
             DontDestroyOnLoad(this.gameObject);
             gameData = this;

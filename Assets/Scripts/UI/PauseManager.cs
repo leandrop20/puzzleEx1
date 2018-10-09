@@ -12,9 +12,12 @@ public class PauseManager : MonoBehaviour {
     public Image soundButton;
     public Sprite musicOnSprite;
     public Sprite musicOffSprite;
+    private SoundManager sound;
 
     private void Start() {
-
+        sound = FindObjectOfType<SoundManager>();
+        board = GameObject.FindWithTag("Board").GetComponent<Board>();
+        pausePanel.SetActive(false);
         if (PlayerPrefs.HasKey("Sound")) {
             if (PlayerPrefs.GetInt("Sound") == 0) {
                 soundButton.sprite = musicOffSprite;
@@ -24,8 +27,6 @@ public class PauseManager : MonoBehaviour {
         } else {
             soundButton.sprite = musicOnSprite;
         }
-        pausePanel.SetActive(false);
-        board = GameObject.FindWithTag("Board").GetComponent<Board>();
     }
 
     private void Update() {
@@ -43,18 +44,21 @@ public class PauseManager : MonoBehaviour {
         paused = !paused;
     }
 
-    public void SoundButton() {
+    public void Sound() {
         if (PlayerPrefs.HasKey("Sound")) {
             if (PlayerPrefs.GetInt("Sound") == 0) {
                 soundButton.sprite = musicOnSprite;
                 PlayerPrefs.SetInt("Sound", 1);
+                sound.adjustVolume();
             } else {
                 soundButton.sprite = musicOffSprite;
                 PlayerPrefs.SetInt("Sound", 0);
+                sound.adjustVolume();
             }
         } else {
             soundButton.sprite = musicOffSprite;
             PlayerPrefs.SetInt("Sound", 1);
+            sound.adjustVolume();
         }
     }
 

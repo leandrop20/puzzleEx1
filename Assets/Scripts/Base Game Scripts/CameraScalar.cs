@@ -7,7 +7,7 @@ public class CameraScalar : MonoBehaviour {
     public Board board;
     public float cameraOffset;
     public float aspectRatio = 0.625f;
-    public float padding = 2;
+    public float padding = 1;
     public float yOffset = 1;
 
     private void Start() {
@@ -23,7 +23,8 @@ public class CameraScalar : MonoBehaviour {
         if (board.width >= board.height) {
             Camera.main.orthographicSize = (board.width / 2 + padding) / aspectRatio;
         } else {
-            Camera.main.orthographicSize = board.width / 2 + padding;
+            //Camera.main.orthographicSize = board.width / 2 + padding;
+            Camera.main.orthographicSize = (board.width / 2 + padding) / aspectRatio;
         }
     }
 }

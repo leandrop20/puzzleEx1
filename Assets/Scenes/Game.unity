@@ -729,6 +729,7 @@ MonoBehaviour:
   destroyNoise:
   - {fileID: 951778352}
   - {fileID: 686011366}
+  backgroundMusic: {fileID: 814551416}
 --- !u!1 &356710115
 GameObject:
   m_ObjectHideFlags: 0
@@ -1022,7 +1023,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   world: {fileID: 11400000, guid: baf691e8c3ad6974ab631a553542648b, type: 2}
-  level: 1
+  level: 2
   currentState: 1
   width: 8
   height: 8
@@ -1107,7 +1108,7 @@ MonoBehaviour:
   board: {fileID: 0}
   cameraOffset: -10
   aspectRatio: 0.625
-  padding: 1.2
+  padding: 1
   yOffset: 0.5
 --- !u!20 &519420031
 Camera:
@@ -1383,7 +1384,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 1058984439}
-        m_MethodName: SoundButton
+        m_MethodName: Sound
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1701,10 +1702,10 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 8300000, guid: 28109071e242f004a85d6736fb81f7a8, type: 3}
-  m_PlayOnAwake: 1
+  m_PlayOnAwake: 0
   m_Volume: 0.5
   m_Pitch: 1
-  Loop: 1
+  Loop: 0
   Mute: 0
   Spatialize: 0
   SpatializePostEffects: 0
@@ -2834,7 +2835,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1660132905
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3329,7 +3330,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1890061105
 RectTransform:
   m_ObjectHideFlags: 0
